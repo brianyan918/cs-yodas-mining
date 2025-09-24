@@ -15,7 +15,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize the LLM
-    llm = LLM(args.model)
+    llm = LLM(args.model, device="cuda")
 
     with open(args.input, "r", encoding="utf-8") as f_in, \
          open(args.output, "w", encoding="utf-8") as f_out:
