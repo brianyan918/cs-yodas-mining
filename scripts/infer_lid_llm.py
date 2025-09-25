@@ -56,7 +56,7 @@ def main():
                 f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
                 continue
             else:
-                text = data.get("text", "")
+                text = data.get("text", "").replace("**", "")
 
             # Prepare prompt
             prompt = construct_prompt(text, tokenizer)
