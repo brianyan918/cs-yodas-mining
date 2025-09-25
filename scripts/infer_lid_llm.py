@@ -72,6 +72,8 @@ def main():
                     data["language_pred"] = pred_text
                     f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
                     f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
+                f_out.flush()
+                f_out_p.flush()
                 batch = []
 
 if __name__ == "__main__":
