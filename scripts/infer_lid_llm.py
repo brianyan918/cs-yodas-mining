@@ -11,11 +11,11 @@ ic_egs = [["这些 地区 人口 稀少 ， often 不 存在 光 污染 的 问�
 
 def construct_prompt(text, tokenizer):
     messages = [
-        {"role": "system", "content": "You are performing text-based language identification."},
+        {"role": "system", "content": "You are performing text-based language identification. We are trying to identify code-mixed or code-switched utterances."},
     ]
     prompt = """Text: ```{text}```
 
-For the given text in triple backticks identify ALL languages that appear. There may be only a single language or multiple languages that are code-mixed together. Your final answer should list the languages in order of prevalance.\nFormat your response as a json object.
+For the given text in triple backticks identify ALL languages that appear. There may be only a single language or multiple languages that are code-mixed together. Your final answer should list the languages in order of prevalance.\nCode-mixing, or code-switching, is defined as the alternation of two languages within a single discourse, sentence, or constituent. Double check whether the text contains code-switching by reviewing word-by-word. Do not simply glance at the overall sentence and only write down the dominant language.\nFormat your response as a json object.
     """
     for egs in ic_egs:
         messages.append({"role": "user", "content": prompt.format(text=egs[0])})
