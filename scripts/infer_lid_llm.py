@@ -3,6 +3,7 @@ import argparse
 import json
 from vllm import LLM, SamplingParams
 from tqdm import tqdm
+from transformers import AutoTokenizer
 
 ic_egs = [["这些 地区 人口 稀少 ， often 不 存在 光 污染 的 问题 ， 你 also 能 欣赏 到 璀 璨 星空 。",["Chinese", "English"]],\
         ["这些地区人口稀少，往往不存在光污染的问题，你也能欣赏到璀璨星空", ["Chinese"]],
