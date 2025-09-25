@@ -19,7 +19,7 @@ def construct_prompt(text, tokenizer):
     """
     for egs in ic_egs:
         messages.append({"role": "user", "content": prompt.format(text=egs[0])})
-        response = {"languages": [egs[0]]}
+        response = {"languages": [egs[1]]}
         messages.append({"role": "assistant", "content": str(response)})
     
     messages.append({"role": "user", "content": prompt.format(text=text)})
@@ -67,12 +67,13 @@ def main():
                 results = llm.generate(batch, sampling_params=sampling_params)
                 for p, r in zip(batch, results):
                     prompt_text = p.replace("\n", "\\n")
-                    pred_text = r[0].outputs[0].text.strip()
+                    pred_text = r.outputs[0].text.strip()
                     import pdb;pdb.set_trace()
                     # Save prediction
                     data["language_pred"] = pred_text
                     f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
                     f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
+                batch = []
 
         print(f"Predictions written to {args.output}")
 
