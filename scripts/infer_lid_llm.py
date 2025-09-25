@@ -66,11 +66,10 @@ def main():
             if len(batch) >= args.batch_size or i == len(input_data) - 1:            
                 results = llm.generate(batch, sampling_params=sampling_params)
                 for p, r in zip(batch, results):
-                    prompt_text = p.replace("\n", "\\n")
-                    pred_text = r.outputs[0].text.strip()
+                    prompt_text = p.replace("\n", "\\n").strip()
+                    pred_text = r.outputs[0].text.replace("\n", "\\n").strip()
                     # Save prediction
-                    data["language_pred"] = pred_text
-                    f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
+                    f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
                     f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
                 f_out.flush()
                 f_out_p.flush()
