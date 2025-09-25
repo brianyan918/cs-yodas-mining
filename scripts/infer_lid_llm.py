@@ -14,12 +14,12 @@ def construct_prompt(text, tokenizer):
         {"role": "system", "content": "You are performing text-based language identification."},
     ]
     prompt = """Text: ```{text}```
-    
-    For the given text in triple backticks identify ALL languages that appear. There may be only a single language or multiple languages that are code-mixed together. Your final answer should list the languages in order of prevalance.\nFormat your response as a json object.
+
+For the given text in triple backticks identify ALL languages that appear. There may be only a single language or multiple languages that are code-mixed together. Your final answer should list the languages in order of prevalance.\nFormat your response as a json object.
     """
     for egs in ic_egs:
         messages.append({"role": "user", "content": prompt.format(text=egs[0])})
-        response = {"languages": [egs[1]]}
+        response = {"languages": egs[1]}
         messages.append({"role": "assistant", "content": str(response)})
     
     messages.append({"role": "user", "content": prompt.format(text=text)})
@@ -68,7 +68,6 @@ def main():
                 for p, r in zip(batch, results):
                     prompt_text = p.replace("\n", "\\n")
                     pred_text = r.outputs[0].text.strip()
-                    import pdb;pdb.set_trace()
                     # Save prediction
                     data["language_pred"] = pred_text
                     f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
