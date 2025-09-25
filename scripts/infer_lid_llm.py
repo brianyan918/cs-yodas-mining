@@ -15,7 +15,7 @@ def main():
     args = parser.parse_args()
 
     # Initialize the LLM
-    llm = LLM(args.model, device="cuda", max_model_len=10000)
+    llm = LLM(args.model, max_model_len=10000)
 
     with open(args.input, "r", encoding="utf-8") as f_in, \
          open(args.output, "w", encoding="utf-8") as f_out:
@@ -35,10 +35,9 @@ def main():
             prompt = args.prompt_template.format(text=text)
 
             # Generate output
-            sampling_params = SamplingParams(max_output_tokens=args.max_tokens)
+            sampling_params = SamplingParams(max_tokens=args.max_tokens)
             result = llm.generate([prompt], sampling_params=sampling_params)
-            # vLLM returns a generator; grab the first output
-            pred_text = next(result).outputs[0].text.strip()
+            pred_text = result[0].outputs[0].text.strip()
 
             # Save prediction
             data["language_pred"] = pred_text
