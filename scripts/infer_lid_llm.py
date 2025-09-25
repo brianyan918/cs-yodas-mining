@@ -74,7 +74,5 @@ def main():
                     f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
                 batch = []
 
-        print(f"Predictions written to {args.output}")
-
 if __name__ == "__main__":
     main()
