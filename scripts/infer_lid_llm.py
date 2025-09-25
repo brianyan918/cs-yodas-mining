@@ -2,48 +2,78 @@
 import argparse
 import json
 from vllm import LLM, SamplingParams
+from tqdm import tqdm
+
+ic_egs = [["这些 地区 人口 稀少 ， often 不 存在 光 污染 的 问题 ， 你 also 能 欣赏 到 璀 璨 星空 。",["Chinese", "English"]],\
+        ["这些地区人口稀少，往往不存在光污染的问题，你也能欣赏到璀璨星空", ["Chinese"]],
+        ["These areas are sparsely populated, light pollution is often not a problem, and you can also enjoy the brilliant starry sky.", ["English"]]]
+
+def construct_prompt(text, tokenizer):
+    messages = [
+        {"role": "system", "content": "You are performing text-based language identification."},
+    ]
+    prompt = """Text: ```{text}```
+    
+    For the given text in triple backticks identify ALL languages that appear. There may be only a single language or multiple languages that are code-mixed together. Your final answer should list the languages in order of prevalance.\nFormat your response as a json object.
+    """
+    for egs in ic_egs:
+        messages.append({"role": "user", "content": prompt.format(text=egs[0])})
+        response = {"languages": [egs[0]]}
+        messages.append({"role": "assistant", "content": str(response)})
+    
+    messages.append({"role": "user", "content": prompt.format(text=text)})
+    prompt_text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True
+    )
+    return prompt_text
 
 def main():
     parser = argparse.ArgumentParser(description="Language Identification using vLLM")
     parser.add_argument("--model", type=str, default="qwen3-4b-Instruct", help="vLLM model to use")
     parser.add_argument("--input", type=str, required=True, help="Input JSONL file with 'text' field")
     parser.add_argument("--output", type=str, required=True, help="Output JSONL file with predicted language")
-    parser.add_argument("--prompt_template", type=str,
-                        default="Identify the language of the following text. Respond with a single language code or name:\n{text}",
-                        help="Prompt template. Use {text} as placeholder for input text.")
     parser.add_argument("--max_tokens", type=int, default=20, help="Maximum tokens to generate")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     args = parser.parse_args()
 
     # Initialize the LLM
     llm = LLM(args.model, max_model_len=10000)
+    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    sampling_params = SamplingParams(max_tokens=args.max_tokens)
 
-    with open(args.input, "r", encoding="utf-8") as f_in, \
-         open(args.output, "w", encoding="utf-8") as f_out:
+    input_data = open(args.input, "r").readlines()
 
-        for line in f_in:
-            line = line.strip()
-            if not line:
-                continue
-            data = json.loads(line)
-            text = data.get("text", "")
-            if not text:
+    batch = []
+
+    for i, line in tqdm(enumerate(input_data)):
+        with open(args.output, "w", encoding="utf-8") as f_out, open(args.output+".prompt", "w", encoding="utf-8") as f_out_p:
+            data = json.loads(line.strip())
+            if "text" not in data:
                 data["language_pred"] = None
                 f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
                 continue
+            else:
+                text = data.get("text", "")
 
             # Prepare prompt
-            prompt = args.prompt_template.format(text=text)
+            prompt = construct_prompt(text, tokenizer)
+            batch.append(prompt)
 
             # Generate output
-            sampling_params = SamplingParams(max_tokens=args.max_tokens)
-            result = llm.generate([prompt], sampling_params=sampling_params)
-            pred_text = result[0].outputs[0].text.strip()
+            if len(batch) >= args.batch_size or i == len(input_data) - 1:            
+                results = llm.generate(batch, sampling_params=sampling_params)
+                for p, r in zip(batch, results):
+                    prompt_text = p.replace("\n", "\\n")
+                    pred_text = r[0].outputs[0].text.strip()
+                    import pdb;pdb.set_trace()
+                    # Save prediction
+                    data["language_pred"] = pred_text
+                    f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
+                    f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
 
-            # Save prediction
-            data["language_pred"] = pred_text
-            f_out.write(json.dumps(data, ensure_ascii=False) + "\n")
-
-    print(f"Predictions written to {args.output}")
+        print(f"Predictions written to {args.output}")
 
 if __name__ == "__main__":
     main()
