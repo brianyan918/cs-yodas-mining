@@ -21,12 +21,13 @@ For the given text in triple backticks identify ALL languages that appear. There
         messages.append({"role": "user", "content": prompt.format(text=egs[0])})
         response = {"languages": egs[1]}
         messages.append({"role": "assistant", "content": str(response)})
-    
+
     messages.append({"role": "user", "content": prompt.format(text=text)})
     prompt_text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
         add_generation_prompt=True
+        enable_thinking=think
     )
     return prompt_text
 
@@ -35,12 +36,13 @@ def main():
     parser.add_argument("--model", type=str, default="qwen3-4b-Instruct", help="vLLM model to use")
     parser.add_argument("--input", type=str, required=True, help="Input JSONL file with 'text' field")
     parser.add_argument("--output", type=str, required=True, help="Output JSONL file with predicted language")
-    parser.add_argument("--max_tokens", type=int, default=20, help="Maximum tokens to generate")
+    parser.add_argument("--max_tokens", type=int, default=500, help="Maximum tokens to generate")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
+    parser.add_argument("--think", type=int, default=0, help="Reasoning mode")
     args = parser.parse_args()
 
     # Initialize the LLM
-    llm = LLM(args.model, max_model_len=10000)
+    llm = LLM(args.model, max_model_len=5000)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     sampling_params = SamplingParams(max_tokens=args.max_tokens)
 
@@ -48,8 +50,10 @@ def main():
 
     batch = []
 
+    with open(args.output, "w", encoding="utf-8") as f_out, open(args.output+".prompt", "w", encoding="utf-8") as f_out_p:
+        pass
     for i, line in tqdm(enumerate(input_data)):
-        with open(args.output, "w", encoding="utf-8") as f_out, open(args.output+".prompt", "w", encoding="utf-8") as f_out_p:
+        with open(args.output, "a", encoding="utf-8") as f_out, open(args.output+".prompt", "a", encoding="utf-8") as f_out_p:
             data = json.loads(line.strip())
             if "text" not in data:
                 data["language_pred"] = None
@@ -63,7 +67,7 @@ def main():
             batch.append(prompt)
 
             # Generate output
-            if len(batch) >= args.batch_size or i == len(input_data) - 1:            
+            if len(batch) >= args.batch_size or i == len(input_data) - 1:
                 results = llm.generate(batch, sampling_params=sampling_params)
                 for p, r in zip(batch, results):
                     prompt_text = p.replace("\n", "\\n").strip()
