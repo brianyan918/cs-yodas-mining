@@ -34,7 +34,7 @@ For the given text in triple backticks identify ALL languages that appear. There
 def validate(text):
     # must pass json
     try:
-        parsed = json.loads(text)
+        parsed = json.loads(text.replace("'", '"'))
         return True
     except json.JSONDecodeError:
         # retry with "fix JSON" prompt
