@@ -89,11 +89,9 @@ def main():
                 for p, r in zip(batch, results):
                     prompt_text = p.replace("\n", "\\n").strip()
                     pred_text = r.outputs[0].text.replace("\n", "\\n").strip()
-                    # if not validate(pred_text):
-                    if 1:
+                    if not validate(pred_text):
                         # fallback
                         pred_text = fallback(llm, p, fallback_sampling_params)
-                        import pdb;pdb.set_trace()
 
                     # Save prediction
                     f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
