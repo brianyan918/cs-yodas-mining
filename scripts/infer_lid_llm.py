@@ -26,7 +26,7 @@ For the given text in triple backticks identify ALL languages that appear. There
     prompt_text = tokenizer.apply_chat_template(
         messages,
         tokenize=False,
-        add_generation_prompt=True
+        add_generation_prompt=True,
         enable_thinking=think
     )
     return prompt_text
