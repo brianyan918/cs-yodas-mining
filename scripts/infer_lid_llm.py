@@ -42,7 +42,7 @@ def validate(text):
 
 def fallback(llm, prompt, sampling_params):
     results = llm.generate([prompt], sampling_params=sampling_params)
-    for result in results[0]:
+    for result in results[0].outputs:
         if validate(result.text):
             return result.text.replace("\n", "\\n").strip()
     return ""
