@@ -60,8 +60,8 @@ def main():
     # Initialize the LLM
     llm = LLM(args.model, max_model_len=5000)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
-    sampling_params = SamplingParams(max_tokens=args.max_tokens)
-    fallback_sampling_params = SamplingParams(max_tokens=args.max_tokens, n=10)
+    sampling_params = SamplingParams(max_tokens=args.max_tokens, temperature=0.7, top_p=0.95, top_k=20, min_p=0)
+    fallback_sampling_params = SamplingParams(max_tokens=args.max_tokens, n=10, temperature=0.7, top_p=0.95, top_k=20, min_p=0)
 
     input_data = open(args.input, "r").readlines()
 
