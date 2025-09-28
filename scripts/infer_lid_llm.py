@@ -31,6 +31,19 @@ For the given text in triple backticks identify ALL languages that appear. There
     )
     return prompt_text
 
+def validate(text):
+    # must pass json
+    try:
+        parsed = json.loads(text)
+        return True
+    except json.JSONDecodeError:
+        # retry with "fix JSON" prompt
+        return False
+
+def fallback(llm, prompt, sampling_params):
+    results = llm.generate([prompt], sampling_params=sampling_params)
+    import pdb;pdb.set_trace()
+
 def main():
     parser = argparse.ArgumentParser(description="Language Identification using vLLM")
     parser.add_argument("--model", type=str, default="qwen3-4b-Instruct", help="vLLM model to use")
@@ -45,6 +58,7 @@ def main():
     llm = LLM(args.model, max_model_len=5000)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     sampling_params = SamplingParams(max_tokens=args.max_tokens)
+    fallback_sampling_params = SamplingParams(max_tokens=args.max_tokens, n=10)
 
     input_data = open(args.input, "r").readlines()
 
@@ -72,6 +86,11 @@ def main():
                 for p, r in zip(batch, results):
                     prompt_text = p.replace("\n", "\\n").strip()
                     pred_text = r.outputs[0].text.replace("\n", "\\n").strip()
+                    # if not validate(pred_text):
+                    if 1:
+                        # fallback
+                        pred_text = fallback(p, fallback_sampling_params)
+
                     # Save prediction
                     f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
                     f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
