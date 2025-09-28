@@ -9,7 +9,7 @@ ic_egs = [["这些 地区 人口 稀少 ， often 不 存在 光 污染 的 问�
         ["这些地区人口稀少，往往不存在光污染的问题，你也能欣赏到璀璨星空", ["Chinese"]],
         ["These areas are sparsely populated, light pollution is often not a problem, and you can also enjoy the brilliant starry sky.", ["English"]]]
 
-def construct_prompt(text, tokenize, think):
+def construct_prompt(text, tokenizer, think):
     messages = [
         {"role": "system", "content": "You are performing text-based language identification. We are trying to identify code-mixed or code-switched utterances."},
     ]
