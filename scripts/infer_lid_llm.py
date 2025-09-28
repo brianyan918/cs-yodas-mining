@@ -42,7 +42,10 @@ def validate(text):
 
 def fallback(llm, prompt, sampling_params):
     results = llm.generate([prompt], sampling_params=sampling_params)
-    import pdb;pdb.set_trace()
+    for result in results[0]:
+        if validate(result.text):
+            return result.text.replace("\n", "\\n").strip()
+    return ""
 
 def main():
     parser = argparse.ArgumentParser(description="Language Identification using vLLM")
@@ -90,6 +93,7 @@ def main():
                     if 1:
                         # fallback
                         pred_text = fallback(llm, p, fallback_sampling_params)
+                        import pdb;pdb.set_trace()
 
                     # Save prediction
                     f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
