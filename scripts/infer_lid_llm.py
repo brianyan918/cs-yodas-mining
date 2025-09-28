@@ -89,7 +89,7 @@ def main():
                     # if not validate(pred_text):
                     if 1:
                         # fallback
-                        pred_text = fallback(p, fallback_sampling_params)
+                        pred_text = fallback(p, llm, fallback_sampling_params)
 
                     # Save prediction
                     f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
