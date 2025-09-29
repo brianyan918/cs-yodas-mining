@@ -29,7 +29,7 @@ def parse_hyp(text):
             return ""
     langs = obj.get("languages", [])
     mapped = [LANG_MAP.get(lang, lang[:3].lower()) for lang in langs]
-    return "-".join(sorted(mapped))  # enforce canonical order
+    return "-".join(mapped)  # enforce canonical order
 
 def main(hyps_file, refs_file):
     hyps, refs = [], []
