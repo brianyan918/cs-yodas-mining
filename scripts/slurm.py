@@ -52,80 +52,73 @@ def submit_job(command, slurm_args, log_dir, job_name):
 
 def check_job_completed(job_id):
     """
+    Check SLURM job status.
     Returns:
-        True  -> job completed successfully
-        False -> job failed or cancelled
-        None  -> job still running/pending
+        True if COMPLETED,
+        False if FAILED or CANCELLED,
+        None if still RUNNING/PENDING
     """
-    # First, check squeue (running or pending jobs)
-    result = subprocess.run(
-        ["squeue", "-j", str(job_id), "-h", "-o", "%T"],
-        capture_output=True,
-        text=True
-    )
-    state = result.stdout.strip()
-    if state == "":
-        # Not in squeue → maybe finished, check sacct
+    try:
         result = subprocess.run(
-            ["sacct", "-j", str(job_id), "--format=State", "-n", "-P"],
+            ["sacct", "-j", str(job_id), "--format=State", "--noheader"],
             capture_output=True,
-            text=True
+            text=True,
         )
-        state = result.stdout.strip()
-        if state == "":
-            # sacct didn't return anything → treat as failed
-            return False
-        elif "COMPLETED" in state:
+        state_line = result.stdout.strip()
+        if not state_line:
+            return None
+        state = state_line.split()[0]
+        if state in ("COMPLETED", "COMPLETING"):
             return True
-        elif any(x in state for x in ["FAILED", "CANCELLED", "TIMEOUT"]):
+        elif state in ("FAILED", "CANCELLED", "TIMEOUT"):
             return False
         else:
-            # Other states like RUNNING/STARTING → treat as running
             return None
-    elif state in ["COMPLETED"]:
-        return True
-    elif state in ["FAILED", "CANCELLED", "TIMEOUT"]:
-        return False
-    else:
-        return None  # still running
+    except Exception as e:
+        print(f"Error checking job {job_id}: {e}")
+        return None
 
-def monitor_jobs(jobs, retry=True):
+def resubmit_job(command):
     """
-    jobs: list of dicts, each with keys 'job_id' and 'command'
-    retry: if True, will resubmit failed jobs once
+    Resubmit the same SLURM command.
+    Returns new job ID as int.
+    """
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    # Assume sbatch returns: "Submitted batch job 123456"
+    for line in result.stdout.splitlines():
+        if "Submitted batch job" in line:
+            return int(line.strip().split()[-1])
+    raise RuntimeError(f"Failed to resubmit job: {command}")
+
+def monitor_jobs(jobs, retry=True, poll_interval=30):
+    """
+    Monitor a list of (job_id, command) tuples.
+    Retries failed jobs once if retry=True.
     """
     pending_jobs = jobs.copy()
-    retries_left = {job["job_id"]: 1 for job in jobs} if retry else {}
+    retries_left = {job[0]: 1 for job in jobs} if retry else {}
 
     while pending_jobs:
         for job in pending_jobs[:]:
-            job_id = job["job_id"]
+            job_id, command = job
             status = check_job_completed(job_id)
 
             if status is True:
-                print(f"Job {job_id} completed successfully.")
+                print(f"[INFO] Job {job_id} completed successfully.")
                 pending_jobs.remove(job)
             elif status is False:
-                print(f"Job {job_id} failed.")
+                print(f"[WARN] Job {job_id} failed.")
                 if retry and retries_left.get(job_id, 0) > 0:
-                    print(f"Retrying job {job_id}...")
-                    new_job_id = resubmit_job(job["command"])  # define resubmit_job()
-                    job["job_id"] = new_job_id
+                    print(f"[INFO] Retrying job {job_id}...")
+                    new_job_id = resubmit_job(command)
+                    print(f"[INFO] New job submitted: {new_job_id}")
+                    pending_jobs.append((new_job_id, command))
                     retries_left[new_job_id] = 0
-                    pending_jobs.append(job)
                 pending_jobs.remove(job)
-            # else: still running, do nothing
+            # else: still running
 
-        time.sleep(30)  # check every 30 seconds
-
-def resubmit_job(command):
-    """Resubmit a command via sbatch, return new job_id"""
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    output = result.stdout.strip()
-    # parse sbatch output like "Submitted batch job 5596282"
-    job_id = int(output.split()[-1])
-    print(f"Resubmitted job {job_id}")
-    return job_id
+        if pending_jobs:
+            time.sleep(poll_interval)
 
 def concatenate_outputs(split_files, final_output):
     """Concatenate outputs from split files."""
