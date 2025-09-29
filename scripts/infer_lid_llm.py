@@ -94,8 +94,8 @@ def main():
                         pred_text = fallback(llm, p, fallback_sampling_params)
 
                     # Save prediction
-                    f_out.write(json.dumps(pred_text, ensure_ascii=False) + "\n")
-                    f_out_p.write(json.dumps(prompt_text, ensure_ascii=False) + "\n")
+                    f_out.write(pred_text + "\n")
+                    f_out_p.write(prompt_text + "\n")
                 f_out.flush()
                 f_out_p.flush()
                 batch = []
