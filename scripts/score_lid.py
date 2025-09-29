@@ -74,11 +74,11 @@ def main(hyps_file, refs_file):
         print(f"  {cls}: {acc*100:.2f}%")
 
     print("\nTop overall confusion pairs:")
-    for (r, h), count in confusions.most_common(10):
+    for (r, h), count in confusions.most_common(20):
         print(f"  {r} → {h}: {count}")
 
     print("\nTop code-switched confusion pairs (hyp has '-'):")    
-    for (r, h), count in cs_confusions.most_common(10):
+    for (r, h), count in cs_confusions.most_common(20):
         print(f"  {r} → {h}: {count}")
 
 if __name__ == "__main__":
