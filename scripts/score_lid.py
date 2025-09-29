@@ -11,10 +11,6 @@ LANG_MAP = {
     "Chinese": "cmn",
     "Spanish": "spa",
     "French": "fra",
-    "German": "deu",
-    "Japanese": "jpn",
-    "Czech": "ces",
-    "Dutch": "nld",
     # add more if needed
 }
 
@@ -29,7 +25,7 @@ def parse_hyp(text):
             return ""
     langs = obj.get("languages", [])
     mapped = [LANG_MAP.get(lang, lang[:3].lower()) for lang in langs]
-    return "-".join(mapped)
+    return "-".join(sorted(mapped))  # enforce canonical order
 
 def main(hyps_file, refs_file):
     hyps, refs = [], []
@@ -62,6 +58,9 @@ def main(hyps_file, refs_file):
     # Confusion pairs
     confusions = Counter((r, h) for r, h in zip(refs, hyps) if r != h)
 
+    # Code-switched confusion pairs (only where hyp has a dash)
+    cs_confusions = Counter((r, h) for r, h in zip(refs, hyps) if r != h and "-" in h)
+
     # Print results
     print(f"Overall Accuracy: {overall_acc*100:.2f}%")
     print(f"Code-switched Precision: {cs_precision*100:.2f}%")
@@ -69,8 +68,13 @@ def main(hyps_file, refs_file):
     print("\nAccuracy by class:")
     for cls, acc in class_acc.items():
         print(f"  {cls}: {acc*100:.2f}%")
-    print("\nTop confusion pairs:")
-    for (r, h), count in confusions.most_common(50):
+
+    print("\nTop overall confusion pairs:")
+    for (r, h), count in confusions.most_common(10):
+        print(f"  {r} → {h}: {count}")
+
+    print("\nTop code-switched confusion pairs (hyp has '-'):")    
+    for (r, h), count in cs_confusions.most_common(10):
         print(f"  {r} → {h}: {count}")
 
 if __name__ == "__main__":
