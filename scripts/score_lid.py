@@ -11,6 +11,10 @@ LANG_MAP = {
     "Chinese": "cmn",
     "Spanish": "spa",
     "French": "fra",
+    "German": "deu",
+    "Japanese": "jpn",
+    "Czech": "ces",
+    "Dutch": "nld",
     # add more if needed
 }
 
