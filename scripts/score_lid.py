@@ -5,12 +5,12 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 # Mapping to ISO-639-3 (extend as needed)
 LANG_MAP = {
-    "English": "Eng",
-    "Arabic": "Ara",
-    "Mandarin": "Cmn",
-    "Chinese": "Cmn",
-    "Spanish": "Spa",
-    "French": "Fra",
+    "English": "eng",
+    "Arabic": "ara",
+    "Mandarin": "cmn",
+    "Chinese": "cmn",
+    "Spanish": "spa",
+    "French": "fra",
     # add more if needed
 }
 
@@ -20,7 +20,10 @@ def parse_hyp(text):
     try:
         obj = json.loads(text)
     except json.JSONDecodeError:
-        obj = ast.literal_eval(text)
+        try:
+            obj = ast.literal_eval(text)
+        except:
+            return ""
 
     langs = obj["languages"]
     mapped = [LANG_MAP.get(lang, lang[:3].title()) for lang in langs]
@@ -32,7 +35,7 @@ def main(hyps_file, refs_file):
     with open(hyps_file, "r") as hf, open(refs_file, "r") as rf:
         for h, r in zip(hf, rf):
             hyps.append(parse_hyp(h.strip()))
-            refs.append(r.strip())
+            refs.append(json.loads(r.strip())["language"])
 
     # Metrics
     accuracy = accuracy_score(refs, hyps)
