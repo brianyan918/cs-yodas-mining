@@ -25,7 +25,9 @@ def parse_hyp(text):
     try:
         langs = obj["languages"]
     except:
-        import pdb;pdb.set_trace()
+        obj = json.loads(obj)
+        langs = obj["languages"]
+
     mapped = [LANG_MAP.get(lang, lang[:3].title()) for lang in langs]
     return "-".join(sorted(mapped))  # enforce canonical order
 
