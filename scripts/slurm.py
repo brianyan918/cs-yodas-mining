@@ -78,21 +78,20 @@ def check_job_completed(job_id):
         print(f"Error checking job {job_id}: {e}")
         return None
 
-def resubmit_job(command):
+def resubmit_job(slurm_script):
     """
-    Resubmit the same SLURM command.
+    Resubmit the job using its slurm script.
     Returns new job ID as int.
     """
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    # Assume sbatch returns: "Submitted batch job 123456"
+    result = subprocess.run(["sbatch", str(slurm_script)], capture_output=True, text=True)
     for line in result.stdout.splitlines():
         if "Submitted batch job" in line:
             return int(line.strip().split()[-1])
-    raise RuntimeError(f"Failed to resubmit job: {command}")
+    raise RuntimeError(f"Failed to resubmit job: {slurm_script}\n{result.stderr}")
 
 def monitor_jobs(jobs, retry=True, poll_interval=30):
     """
-    Monitor a list of (job_id, command) tuples.
+    Monitor a list of (job_id, stdout_log, stderr_log, slurm_script) tuples.
     Retries failed jobs once if retry=True.
     """
     pending_jobs = jobs.copy()
@@ -100,21 +99,23 @@ def monitor_jobs(jobs, retry=True, poll_interval=30):
 
     while pending_jobs:
         for job in pending_jobs[:]:
-            job_id, command = job
+            job_id, stdout_log, stderr_log, slurm_script = job
             status = check_job_completed(job_id)
 
             if status is True:
-                print(f"[INFO] Job {job_id} completed successfully.")
+                print(f"[INFO] Job {job_id} completed successfully. Logs: {stdout_log}, {stderr_log}")
                 pending_jobs.remove(job)
+
             elif status is False:
-                print(f"[WARN] Job {job_id} failed.")
+                print(f"[WARN] Job {job_id} failed. Logs: {stdout_log}, {stderr_log}")
                 if retry and retries_left.get(job_id, 0) > 0:
                     print(f"[INFO] Retrying job {job_id}...")
-                    new_job_id = resubmit_job(command)
+                    new_job_id = resubmit_job(slurm_script)
                     print(f"[INFO] New job submitted: {new_job_id}")
-                    pending_jobs.append((new_job_id, command))
+                    pending_jobs.append((new_job_id, stdout_log, stderr_log, slurm_script))
                     retries_left[new_job_id] = 0
                 pending_jobs.remove(job)
+
             # else: still running
 
         if pending_jobs:
