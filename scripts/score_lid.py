@@ -22,7 +22,10 @@ def parse_hyp(text):
     except json.JSONDecodeError:
         obj = ast.literal_eval(text)
 
-    langs = obj["languages"]
+    try:
+        langs = obj["languages"]
+    except:
+        import pdb;pdb.set_trace()
     mapped = [LANG_MAP.get(lang, lang[:3].title()) for lang in langs]
     return "-".join(sorted(mapped))  # enforce canonical order
 
