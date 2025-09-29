@@ -69,8 +69,8 @@ def main(hyps_file, refs_file):
     print("\nAccuracy by class:")
     for cls, acc in class_acc.items():
         print(f"  {cls}: {acc*100:.2f}%")
-    print("\nConfusion pairs:")
-    for (r, h), count in confusions:
+    print("\nTop confusion pairs:")
+    for (r, h), count in confusions.most_common(50):
         print(f"  {r} → {h}: {count}")
 
 if __name__ == "__main__":
