@@ -5,12 +5,28 @@ import subprocess
 import time
 import shutil
 
-def split_input_file(input_file, n_splits, split_dir):
-    """Split input file into N parts without loading the whole file into memory."""
-    split_dir = Path(split_dir)
+def split_input_file(input_file, n_splits):
+    """
+    Split input file into N parts without loading the whole file into memory.
+    Reuses existing splits if they already exist.
+    """
+    input_path = Path(input_file)
+    split_dir = Path(f"{input_file}_split_{n_splits}")
     split_dir.mkdir(parents=True, exist_ok=True)
 
-    # First, count total lines
+    # Expected split filenames
+    expected_splits = [split_dir / f"split_{i}.jsonl" for i in range(n_splits)]
+
+    # If all split files already exist, just return them
+    if all(f.exists() for f in expected_splits):
+        print(f"[INFO] Splits already exist in {split_dir}, skipping splitting.")
+        # Count lines for consistency check
+        total_lines = sum(1 for _ in open(input_file, "r", encoding="utf-8"))
+        return expected_splits, total_lines
+
+    print(f"[INFO] Splitting {input_file} into {n_splits} parts at {split_dir}")
+
+    # First pass: count total lines
     total_lines = 0
     with open(input_file, "r", encoding="utf-8") as f:
         for _ in f:
@@ -18,11 +34,10 @@ def split_input_file(input_file, n_splits, split_dir):
 
     chunk_size = (total_lines + n_splits - 1) // n_splits
 
-    split_files = []
+    # Second pass: write chunks line by line
     with open(input_file, "r", encoding="utf-8") as f:
         for i in range(n_splits):
             split_path = split_dir / f"split_{i}.jsonl"
-            split_files.append(split_path)
             with open(split_path, "w", encoding="utf-8") as fout:
                 for _ in range(chunk_size):
                     line = f.readline()
@@ -30,10 +45,9 @@ def split_input_file(input_file, n_splits, split_dir):
                         break
                     fout.write(line)
 
-    return split_files, total_lines
+    return expected_splits, total_lines
 
 def submit_job(command, slurm_args, log_dir, job_name):
-    """Create a temporary Slurm script and submit it."""
     log_dir = Path(log_dir)
     log_dir.mkdir(parents=True, exist_ok=True)
     out_log = log_dir / f"{job_name}.out"
@@ -113,7 +127,10 @@ def monitor_jobs(jobs, retry=True, poll_interval=30):
 def concatenate_outputs(split_files, final_output):
     with open(final_output, "w", encoding="utf-8") as fout:
         for f in split_files:
-            with open(f, "r", encoding="utf-8") as fin:
+            out_file = f.with_name(f"{f.stem}_out.jsonl")
+            if not out_file.exists():
+                raise FileNotFoundError(f"Expected output file not found: {out_file}")
+            with open(out_file, "r", encoding="utf-8") as fin:
                 shutil.copyfileobj(fin, fout)
 
 def main():
@@ -123,12 +140,13 @@ def main():
     parser.add_argument("--n_splits", type=int, default=4)
     parser.add_argument("--slurm_args", nargs="*", default=[])
     parser.add_argument("--log_dir", default="logs")
-    parser.add_argument("--split_dir", default="splits")
     parser.add_argument("--python_command", required=True)
     args = parser.parse_args()
 
-    split_files, total_lines = split_input_file(args.input_file, args.n_splits, args.split_dir)
+    # Split input (or reuse existing splits)
+    split_files, total_lines = split_input_file(args.input_file, args.n_splits)
 
+    # Submit jobs
     jobs = []
     for split_file in split_files:
         split_output = split_file.with_name(f"{split_file.stem}_out.jsonl")
@@ -137,10 +155,11 @@ def main():
         print(f"Submitted {split_file} as job {job_id}")
         jobs.append((job_id, out_log, err_log, script))
 
+    # Monitor jobs
     monitor_jobs(jobs)
 
-    output_files = [f.with_name(f"{f.stem}_out.jsonl") for f in split_files]
-    concatenate_outputs(output_files, args.output_file)
+    # Concatenate outputs
+    concatenate_outputs(split_files, args.output_file)
     print(f"All done! Output written to {args.output_file} (expected {total_lines} lines)")
 
 if __name__ == "__main__":
