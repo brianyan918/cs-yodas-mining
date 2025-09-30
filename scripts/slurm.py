@@ -6,23 +6,29 @@ import time
 import shutil
 
 def split_input_file(input_file, n_splits, split_dir):
-    """Split input file into N parts."""
+    """Split input file into N parts without loading the whole file into memory."""
     split_dir = Path(split_dir)
     split_dir.mkdir(parents=True, exist_ok=True)
 
+    # First, count total lines
+    total_lines = 0
     with open(input_file, "r", encoding="utf-8") as f:
-        lines = f.readlines()
+        for _ in f:
+            total_lines += 1
 
-    total_lines = len(lines)
     chunk_size = (total_lines + n_splits - 1) // n_splits
 
     split_files = []
-    for i in range(n_splits):
-        chunk = lines[i*chunk_size:(i+1)*chunk_size]
-        split_path = split_dir / f"split_{i}.jsonl"
-        with open(split_path, "w", encoding="utf-8") as f_out:
-            f_out.writelines(chunk)
-        split_files.append(split_path)
+    with open(input_file, "r", encoding="utf-8") as f:
+        for i in range(n_splits):
+            split_path = split_dir / f"split_{i}.jsonl"
+            split_files.append(split_path)
+            with open(split_path, "w", encoding="utf-8") as fout:
+                for _ in range(chunk_size):
+                    line = f.readline()
+                    if not line:
+                        break
+                    fout.write(line)
 
     return split_files, total_lines
 
@@ -51,13 +57,6 @@ def submit_job(command, slurm_args, log_dir, job_name):
     return job_id, out_log, err_log, slurm_script
 
 def check_job_completed(job_id):
-    """
-    Check SLURM job status.
-    Returns:
-        True if COMPLETED,
-        False if FAILED or CANCELLED,
-        None if still RUNNING/PENDING
-    """
     try:
         result = subprocess.run(
             ["sacct", "-j", str(job_id), "--format=State", "--noheader"],
@@ -79,10 +78,6 @@ def check_job_completed(job_id):
         return None
 
 def resubmit_job(slurm_script):
-    """
-    Resubmit the job using its slurm script.
-    Returns new job ID as int.
-    """
     result = subprocess.run(["sbatch", str(slurm_script)], capture_output=True, text=True)
     for line in result.stdout.splitlines():
         if "Submitted batch job" in line:
@@ -90,10 +85,6 @@ def resubmit_job(slurm_script):
     raise RuntimeError(f"Failed to resubmit job: {slurm_script}\n{result.stderr}")
 
 def monitor_jobs(jobs, retry=True, poll_interval=30):
-    """
-    Monitor a list of (job_id, stdout_log, stderr_log, slurm_script) tuples.
-    Retries failed jobs once if retry=True.
-    """
     pending_jobs = jobs.copy()
     retries_left = {job[0]: 3 for job in jobs} if retry else {}
 
@@ -116,16 +107,12 @@ def monitor_jobs(jobs, retry=True, poll_interval=30):
                     retries_left[new_job_id] = 0
                 pending_jobs.remove(job)
 
-            # else: still running
-
         if pending_jobs:
             time.sleep(poll_interval)
 
 def concatenate_outputs(split_files, final_output):
-    """Concatenate outputs from split files."""
     with open(final_output, "w", encoding="utf-8") as fout:
         for f in split_files:
-            # assuming output file for each split has same name with _out suffix
             with open(f, "r", encoding="utf-8") as fin:
                 shutil.copyfileobj(fin, fout)
 
@@ -134,16 +121,14 @@ def main():
     parser.add_argument("--input_file", required=True)
     parser.add_argument("--output_file", required=True)
     parser.add_argument("--n_splits", type=int, default=4)
-    parser.add_argument("--slurm_args", nargs="*", default=[], help="Extra sbatch arguments, e.g. --partition=short")
+    parser.add_argument("--slurm_args", nargs="*", default=[])
     parser.add_argument("--log_dir", default="logs")
     parser.add_argument("--split_dir", default="splits")
-    parser.add_argument("--python_command", required=True, help="Python command template. Use {split_input} and {split_output}")
+    parser.add_argument("--python_command", required=True)
     args = parser.parse_args()
 
-    # Split input
     split_files, total_lines = split_input_file(args.input_file, args.n_splits, args.split_dir)
 
-    # Submit jobs
     jobs = []
     for split_file in split_files:
         split_output = split_file.with_name(f"{split_file.stem}_out.jsonl")
@@ -152,10 +137,8 @@ def main():
         print(f"Submitted {split_file} as job {job_id}")
         jobs.append((job_id, out_log, err_log, script))
 
-    # Monitor
     monitor_jobs(jobs)
 
-    # Concatenate outputs
     output_files = [f.with_name(f"{f.stem}_out.jsonl") for f in split_files]
     concatenate_outputs(output_files, args.output_file)
     print(f"All done! Output written to {args.output_file} (expected {total_lines} lines)")
