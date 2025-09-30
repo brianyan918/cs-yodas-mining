@@ -87,7 +87,7 @@ def main():
             # Prepare prompt
             prompt, prompt_len = construct_prompt(text, tokenizer, think=(args.think==1))
             if prompt_len > args.max_model_len - args.max_tokens:
-                prompt = "This is a dummy prompt. Output an empty string."
+                prompt = r"This is a dummy prompt. Output an json object: {}"
             batch.append(prompt)
 
             # Generate output
