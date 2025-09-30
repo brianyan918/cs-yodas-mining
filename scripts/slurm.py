@@ -126,8 +126,7 @@ def concatenate_outputs(split_files, final_output):
     with open(final_output, "w", encoding="utf-8") as fout:
         for f in split_files:
             # assuming output file for each split has same name with _out suffix
-            out_file = f.with_name(f"{f.stem}_out.jsonl")
-            with open(out_file, "r", encoding="utf-8") as fin:
+            with open(f, "r", encoding="utf-8") as fin:
                 shutil.copyfileobj(fin, fout)
 
 def main():
