@@ -1,7 +1,6 @@
 import re
 import json
 from pathlib import Path
-from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
 
 HEADER_RE = re.compile(r'^(\S+)\s*<(\w+)><(\w+)>')
@@ -43,42 +42,20 @@ def segment_line(line):
         })
     return segments
 
-def process_lines(lines):
-    results = []
-    for line in lines:
-        results.extend(segment_line(line))
-    return results
-
-def chunked_iterable(iterable, chunk_size):
-    batch = []
-    for item in iterable:
-        batch.append(item)
-        if len(batch) >= chunk_size:
-            yield batch
-            batch = []
-    if batch:
-        yield batch
-
-def process_file_parallel(input_path, output_path, n_workers=None, chunk_size=1000):
+def process_file(input_path, output_path):
     input_path = Path(input_path)
     output_path = Path(output_path)
-    n_workers = n_workers or cpu_count()
 
-    # Count total lines for progress bar
+    # Count lines once for progress bar
     with input_path.open("r", encoding="utf-8") as f:
         total_lines = sum(1 for _ in f)
 
-    # Read lines and batch
-    with input_path.open("r", encoding="utf-8") as fin:
-        batches = list(chunked_iterable(fin, chunk_size))
-
-    with output_path.open("w", encoding="utf-8") as fout:
-        with Pool(n_workers) as pool:
-            for segments in tqdm(pool.imap(process_lines, batches),
-                                 total=len(batches),
-                                 desc="Processing"):
-                for seg in segments:
-                    fout.write(json.dumps(seg, ensure_ascii=False) + "\n")
+    with input_path.open("r", encoding="utf-8") as fin, \
+         output_path.open("w", encoding="utf-8") as fout:
+        for line in tqdm(fin, total=total_lines, desc="Processing"):
+            segs = segment_line(line)
+            for seg in segs:
+                fout.write(json.dumps(seg, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
     import argparse
@@ -86,8 +63,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input text file")
     parser.add_argument("--output", required=True, help="Output JSONL file")
-    parser.add_argument("--workers", type=int, default=None, help="Number of parallel processes")
-    parser.add_argument("--chunk_size", type=int, default=1000, help="Number of lines per process batch")
     args = parser.parse_args()
 
-    process_file_parallel(args.input, args.output, n_workers=args.workers, chunk_size=args.chunk_size)
+    process_file(args.input, args.output)
