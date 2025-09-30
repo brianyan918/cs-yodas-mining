@@ -29,7 +29,11 @@ For the given text in triple backticks identify ALL languages that appear. There
         add_generation_prompt=True,
         enable_thinking=think
     )
-    return prompt_text
+    # Compute token length
+    tokenized = tokenizer.tokenize(prompt_text)
+    token_length = len(tokenized)
+
+    return prompt_text, token_length
 
 def validate(text):
     # must pass json
@@ -80,7 +84,9 @@ def main():
                 text = data.get("text", "").replace("**", "")
 
             # Prepare prompt
-            prompt = construct_prompt(text, tokenizer, think=(args.think==1))
+            prompt, prompt_len = construct_prompt(text, tokenizer, think=(args.think==1))
+            if prompt_len > args.max_model_len - args.max_tokens:
+                prompt = "This is a dummy prompt. Output an empty string."
             batch.append(prompt)
 
             # Generate output

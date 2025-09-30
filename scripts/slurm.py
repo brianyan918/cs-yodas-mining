@@ -95,7 +95,7 @@ def monitor_jobs(jobs, retry=True, poll_interval=30):
     Retries failed jobs once if retry=True.
     """
     pending_jobs = jobs.copy()
-    retries_left = {job[0]: 1 for job in jobs} if retry else {}
+    retries_left = {job[0]: 3 for job in jobs} if retry else {}
 
     while pending_jobs:
         for job in pending_jobs[:]:
