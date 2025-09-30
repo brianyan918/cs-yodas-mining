@@ -72,15 +72,13 @@ def process_file_parallel(input_path, output_path, n_workers=None, chunk_size=10
     with input_path.open("r", encoding="utf-8") as fin:
         batches = list(chunked_iterable(fin, chunk_size))
 
-    all_segments = []
-    with Pool(n_workers) as pool:
-        for segments in tqdm(pool.imap(process_lines, batches), total=len(batches), desc="Processing"):
-            all_segments.extend(segments)
-
-    # Write output in order
     with output_path.open("w", encoding="utf-8") as fout:
-        for seg in all_segments:
-            fout.write(json.dumps(seg, ensure_ascii=False) + "\n")
+        with Pool(n_workers) as pool:
+            for segments in tqdm(pool.imap(process_lines, batches),
+                                 total=len(batches),
+                                 desc="Processing"):
+                for seg in segments:
+                    fout.write(json.dumps(seg, ensure_ascii=False) + "\n")
 
 if __name__ == "__main__":
     import argparse
