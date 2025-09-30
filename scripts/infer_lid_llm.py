@@ -57,12 +57,13 @@ def main():
     parser.add_argument("--input", type=str, required=True, help="Input JSONL file with 'text' field")
     parser.add_argument("--output", type=str, required=True, help="Output JSONL file with predicted language")
     parser.add_argument("--max_tokens", type=int, default=500, help="Maximum tokens to generate")
+    parser.add_argument("--max_model_len", type=int, default=5000, help="Maximum model length")
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
     parser.add_argument("--think", type=int, default=0, help="Reasoning mode")
     args = parser.parse_args()
 
     # Initialize the LLM
-    llm = LLM(args.model, max_model_len=5000)
+    llm = LLM(args.model, max_model_len=args.max_model_len)
     tokenizer = AutoTokenizer.from_pretrained(args.model)
     sampling_params = SamplingParams(max_tokens=args.max_tokens, temperature=0.7, top_p=0.95, top_k=20, min_p=0)
     fallback_sampling_params = SamplingParams(max_tokens=args.max_tokens, n=10, temperature=0.7, top_p=0.95, top_k=20, min_p=0)
